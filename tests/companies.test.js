@@ -1,24 +1,75 @@
-process.env.NODE_ENV === "test"
 const request = require("supertest");
 
 const app = require("../app");
-const db = require('../db');
-const [ code, name, description ] = ['flix', 'Netflix', 'A place to watch movies']
+const { createData } = require("./setup");
+const db = require("../db");
 
-beforeEach(async () => {
+beforeEach(createData);
 
-    let results =  await db.query(`INSERT INTO companies (code, name, description) VALUES ($1, $2, $3)`, 
-    [code, name, description])
+afterAll(async () => {
+  await db.end()
+})
+
+describe("GET /", function () {
+  test("It should respond with array of companies", async function () {
+    const response = await request(app).get("/companies");
+    expect(response.body).toEqual({
+      "companies": [
+        [
+        {code: "apple", name: "Apple", description: "Maker of OSX."},
+        {code: "ibm", name: "IBM", description: "Big blue."},
+        ]
+      ]
+    });
+  })
 });
 
-afterEach(async () => {
-    let dataDelete = await db.query('DELETE FROM companies WHERE code = $1', [code])
-})
+describe("GET /", function () {
+  test("Should return a searched company", async function () {
+    const response = await request(app).get("/companies/apple");
+    expect(response.body).toEqual({
+      "company": {
+        "code": "apple",
+        "name": "Apple",
+        "description": "Maker of OSX.",
+        "invoices": {
+          "id": 1,
+          "amt": 100,
+          "paid": false,
+          "add_date": "2018-01-01T05:00:00.000Z",
+          "paid_date": null
+        }
+      }
+    });
+  })
+});
 
-describe("GET /companies", () => {
-    test("Get all comapnies", async() => {
-        const res = await request(app).get("/companies");
-        expect(res.statusCode).toBe(200)
-        expect(res.body).toEqual({companies: [code, name, description]})
-    })
-})
+describe("POST /", function () {
+  test("Should post new company", async function () {
+    const response = await request(app).post("/companies")
+    .send({code: "DIS", name: "Disney", description: "Maker of Disneyland"})
+    expect(response.body).toEqual({
+      "company": [
+        {code: "DIS", name: "Disney", description: "Maker of Disneyland"}
+      ]
+    });
+  })
+});
+
+describe("PUT /", function () {
+  test("Should update exisiting company", async function () {
+    const response = await request(app).put("/companies/apple")
+    .send({code: "apple", name: "Apple", description: "We put apples on computers"})
+    expect(response.body).toEqual({
+      "company": 
+        {code: "apple", name: "Apple", description: "We put apples on computers"}
+    });
+  })
+});
+
+describe("DELETE /", function () {
+  test("Should delete exisiting company", async function () {
+    const response = await request(app).delete("/companies/apple")
+    expect(response.body).toEqual({"status": "deleted"});
+  })
+});

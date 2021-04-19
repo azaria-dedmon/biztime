@@ -62,16 +62,42 @@ router.post('/', async(req, res, next) => {
 
 router.put('/:id', async(req, res, next) => {
     try {
-        const { amt } = req.body;
+        const { amt, paid } = req.body;
+        const { id } = req.params
+        let paid_date;
+
+        const checkPaidDate = await db.query (`
+        SELECT paid
+        FROM invoices
+        WHERE id=$1
+        `, [id])
+        
+        if(!checkPaidDate.rows[0].paid && paid) {
+            paid_date = new Date()
+        } else if (checkPaidDate.rows[0].paid && !paid) {
+            paid_date = null
+        } else {
+            paid_date = checkPaidDate.rows[0].paid
+        }
+
         const results = await db.query(`
-        UPDATE invoices SET amt=$1
-        WHERE id = $2
+        UPDATE invoices SET amt=$1, paid=$2
+        WHERE id = $3
         RETURNING *
-        `, [amt, req.params.id])
-        if(results.rows[0] === undefined) {
-            throw new ExpressError
-         }; 
-         return res.json({company: results.rows[0]})
+        `, [amt, paid, id])
+
+        const data = {
+            invoice: {
+                id: results.rows[0].id,
+                comp_code: results.rows[0].comp_code,
+                amt: results.rows[0].amt,
+                paid: results.rows[0].paid,
+                add_date: results.rows[0].add_date,
+                paid_date: paid_date
+                }
+            }
+        if(results.rows[0] === undefined) throw new ExpressError
+         return res.json(data)
     } catch(e) {
         next()
     }
@@ -80,10 +106,7 @@ router.put('/:id', async(req, res, next) => {
 router.delete('/:id', async(req, res, next) => {
     try {
         const results = await db.query('DELETE FROM invoices WHERE id = $1', [req.params.id])
-        console.log(results)
-        if (results.rows === undefined) {
-            throw new ExpressError
-        }
+        if (results.rows === undefined) throw new ExpressError
         return res.send({status: "deleted"})
     } catch(e) {
         next()

@@ -20,7 +20,8 @@
   "homepage": "https://github.com/azaria-dedmon/biztime#readme",
   "dependencies": {
     "express": "^4.17.1",
-    "pg": "^8.5.1"
+    "pg": "^8.5.1",
+    "slugify": "^1.5.0"
   },
   "devDependencies": {
     "supertest": "^6.1.3"
